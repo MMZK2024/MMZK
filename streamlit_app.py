@@ -1,119 +1,150 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import DBSCAN, AgglomerativeClustering
+import matplotlib.pyplot as plt
+import seaborn as sns
+import logging
 
+# Configuration du journal
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-st.title("📊 Data evaluation app")
-
-st.write(
-    "We are so glad to see you here. ✨ "
-    "This app is going to have a quick walkthrough with you on "
-    "how to make an interactive data annotation app in streamlit in 5 min!"
-)
-
-st.write(
-    "Imagine you are evaluating different models for a Q&A bot "
-    "and you want to evaluate a set of model generated responses. "
-    "You have collected some user data. "
-    "Here is a sample question and response set."
-)
-
-data = {
-    "Questions": [
-        "Who invented the internet?",
-        "What causes the Northern Lights?",
-        "Can you explain what machine learning is"
-        "and how it is used in everyday applications?",
-        "How do penguins fly?",
-    ],
-    "Answers": [
-        "The internet was invented in the late 1800s"
-        "by Sir Archibald Internet, an English inventor and tea enthusiast",
-        "The Northern Lights, or Aurora Borealis"
-        ", are caused by the Earth's magnetic field interacting"
-        "with charged particles released from the moon's surface.",
-        "Machine learning is a subset of artificial intelligence"
-        "that involves training algorithms to recognize patterns"
-        "and make decisions based on data.",
-        " Penguins are unique among birds because they can fly underwater. "
-        "Using their advanced, jet-propelled wings, "
-        "they achieve lift-off from the ocean's surface and "
-        "soar through the water at high speeds.",
-    ],
+# Ajouter du CSS personnalisé pour centrer le texte et l'image
+st.markdown("""
+<style>
+body {
+    background-color: #f5f5f5;
 }
+h1, h2 {
+    color: #333;
+    font-family: 'Arial', sans-serif;
+    text-align: center;
+}
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    text-align: center;
+    padding: 10px 0;
+    background-color: #f5f5f5;
+    font-family: 'Arial', sans-serif;
+    color: #666;
+}
+</style>
+""", unsafe_allow_html=True)
 
-df = pd.DataFrame(data)
+# Titre de l'application et image locale
+st.markdown('<div class="container">', unsafe_allow_html=True)
+image_path = "logo.jpg"  # Chemin vers l'image locale
+st.image(image_path, caption='MIAB 2023-2024', use_column_width=True)
+st.markdown('<h2>Hello everybody <br> ___Here is our streamlit project___</h2>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-st.write(df)
+# Disposition de l'application Streamlit
+st.title('DBSCAN and Hierarchical Clustering')
 
-st.write(
-    "Now I want to evaluate the responses from my model. "
-    "One way to achieve this is to use the very powerful `st.data_editor` feature. "
-    "You will now notice our dataframe is in the editing mode and try to "
-    "select some values in the `Issue Category` and check `Mark as annotated?` once finished 👇"
-)
+# Ajouter des instructions
+st.write("""
+## Instructions
+1. Upload your CSV file.
+2. Adjust settings for DBSCAN and Hierarchical Clustering.
+3. Click the corresponding button to apply clustering.
+""")
 
-df["Issue"] = [True, True, True, False]
-df["Category"] = ["Accuracy", "Accuracy", "Completeness", ""]
+# Fonction pour charger et prétraiter les données
+def charger_donnees(fichier_telecharge):
+    if fichier_telecharge is not None:
+        try:
+            data = pd.read_csv(fichier_telecharge)
+            return data
+        except Exception as e:
+            logger.error(f"Erreur lors du chargement des données : {e}")
+            st.error("Erreur lors du chargement des données")
+    return None
 
-new_df = st.data_editor(
-    df,
-    column_config={
-        "Questions": st.column_config.TextColumn(width="medium", disabled=True),
-        "Answers": st.column_config.TextColumn(width="medium", disabled=True),
-        "Issue": st.column_config.CheckboxColumn("Mark as annotated?", default=False),
-        "Category": st.column_config.SelectboxColumn(
-            "Issue Category",
-            help="select the category",
-            options=["Accuracy", "Relevance", "Coherence", "Bias", "Completeness"],
-            required=False,
-        ),
-    },
-)
+# Fonction pour prétraiter les données
+def pretraiter_donnees(data):
+    try:
+        data = pd.get_dummies(data, drop_first=True)
+        scaler = StandardScaler()
+        data_scaled = scaler.fit_transform(data)
+        return data, data_scaled
+    except Exception as e:
+        logger.error(f"Erreur lors du prétraitement des données : {e}")
+        st.error("Erreur lors du prétraitement des données")
+        return None, None
 
-st.write(
-    "You will notice that we changed our dataframe and added new data. "
-    "Now it is time to visualize what we have annotated!"
-)
+# Fonction pour appliquer DBSCAN
+def appliquer_dbscan(data, eps, min_samples):
+    try:
+        data_pretraiter, data_scaled = pretraiter_donnees(data)
+        dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+        dbscan_labels = dbscan.fit_predict(data_scaled)
+        data_pretraiter['Cluster'] = dbscan_labels
+        return data_pretraiter, dbscan_labels, data_scaled
+    except Exception as e:
+        logger.error(f"Erreur lors de l'application de DBSCAN : {e}")
+        st.error("Erreur lors de l'application de DBSCAN")
+        return None, None, None
 
-st.divider()
+# Fonction pour appliquer le Clustering Hiérarchique
+def appliquer_agglomerative(data, n_clusters):
+    try:
+        data_pretraiter, data_scaled = pretraiter_donnees(data)
+        agg = AgglomerativeClustering(n_clusters=n_clusters, affinity='euclidean', linkage='ward')
+        agg_labels = agg.fit_predict(data_scaled)
+        data_pretraiter['Cluster'] = agg_labels
+        return data_pretraiter, agg_labels, data_scaled
+    except Exception as e:
+        logger.error(f"Erreur lors de l'application du Clustering Hiérarchique : {e}")
+        st.error("Erreur lors de l'application du Clustering Hiérarchique")
+        return None, None, None
 
-st.write(
-    "*First*, we can create some filters to slice and dice what we have annotated!"
-)
+# Charger le dataset
+fichier_telecharge = st.file_uploader("Choose a CSV file", type="csv")
 
-col1, col2 = st.columns([1, 1])
-with col1:
-    issue_filter = st.selectbox("Issues or Non-issues", options=new_df.Issue.unique())
-with col2:
-    category_filter = st.selectbox(
-        "Choose a category",
-        options=new_df[new_df["Issue"] == issue_filter].Category.unique(),
-    )
+if fichier_telecharge is not None:
+    data = charger_donnees(fichier_telecharge)
+    st.write("Data overview:")
+    st.write(data.head())
 
-st.dataframe(
-    new_df[(new_df["Issue"] == issue_filter) & (new_df["Category"] == category_filter)]
-)
+    # Paramètres pour DBSCAN
+    st.sidebar.header('DBSCAN settings')
+    eps = st.sidebar.slider('Value of epsilon', 0.1, 10.0, 0.5)
+    min_samples = st.sidebar.slider('Minimum number of samples', 1, 20, 5)
+    
+    # Paramètres pour Clustering Hiérarchique
+    st.sidebar.header('Hierarchical Clustering Settings')
+    n_clusters = st.sidebar.slider('Number of Clusters', 2, 10, 3)
+    
+    if st.sidebar.button('Apply DBSCAN'):
+        data_clustered, cluster_labels, data_scaled = appliquer_dbscan(data, eps, min_samples)
+        if data_clustered is not None:
+            st.write("Results of DBSCAN Clustering:")
+            st.write(data_clustered[['Cluster']].value_counts())
 
-st.markdown("")
-st.write(
-    "*Next*, we can visualize our data quickly using `st.metrics` and `st.bar_plot`"
-)
+            plt.figure(figsize=(10, 7))
+            sns.scatterplot(x=data_scaled[:, 0], y=data_scaled[:, 1], hue=data_clustered['Cluster'], palette='viridis')
+            plt.title('Clusters DBSCAN')
+            st.pyplot(plt)
 
-issue_cnt = len(new_df[new_df["Issue"] == True])
-total_cnt = len(new_df)
-issue_perc = f"{issue_cnt/total_cnt*100:.0f}%"
+    if st.sidebar.button('Apply Hierarchical Clustering'):
+        data_clustered, cluster_labels, data_scaled = appliquer_agglomerative(data, n_clusters)
+        if data_clustered is not None:
+            st.write("Results of Hierarchical Clustering:")
+            st.write(data_clustered[['Cluster']].value_counts())
 
-col1, col2 = st.columns([1, 1])
-with col1:
-    st.metric("Number of responses", issue_cnt)
-with col2:
-    st.metric("Annotation Progress", issue_perc)
+            plt.figure(figsize=(10, 7))
+            sns.scatterplot(x=data_scaled[:, 0], y=data_scaled[:, 1], hue=data_clustered['Cluster'], palette='viridis')
+            plt.title('Hierarchical Clusters')
+            st.pyplot(plt)
 
-df_plot = new_df[new_df["Category"] != ""].Category.value_counts().reset_index()
-
-st.bar_chart(df_plot, x="Category", y="count")
-
-st.write(
-    "Here we are at the end of getting started with streamlit! Happy Streamlit-ing! :balloon:"
-)
-
+# Ajouter le pied de page
+st.markdown('<div class="footer">Developed by [Votre Nom]</div>', unsafe_allow_html=True)
