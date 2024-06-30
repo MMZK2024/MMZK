@@ -66,7 +66,7 @@ def charger_donnees(fichier_telecharge):
             return data
         except Exception as e:
             logger.error(f"Erreur lors du chargement des données : {e}")
-            st.error("Erreur lors du chargement des données")
+            st.error(f"Erreur lors du chargement des données: {e}")
     return None
 
 # Fonction pour prétraiter les données
@@ -75,10 +75,11 @@ def pretraiter_donnees(data):
         data = pd.get_dummies(data, drop_first=True)
         scaler = StandardScaler()
         data_scaled = scaler.fit_transform(data)
+        st.write("Data after scaling:", data_scaled)
         return data, data_scaled
     except Exception as e:
         logger.error(f"Erreur lors du prétraitement des données : {e}")
-        st.error("Erreur lors du prétraitement des données")
+        st.error(f"Erreur lors du prétraitement des données: {e}")
         return None, None
 
 # Fonction pour appliquer DBSCAN
@@ -91,20 +92,21 @@ def appliquer_dbscan(data, eps, min_samples):
         return data_pretraiter, dbscan_labels, data_scaled
     except Exception as e:
         logger.error(f"Erreur lors de l'application de DBSCAN : {e}")
-        st.error("Erreur lors de l'application de DBSCAN")
+        st.error(f"Erreur lors de l'application de DBSCAN: {e}")
         return None, None, None
 
 # Fonction pour appliquer le Clustering Hiérarchique
 def appliquer_agglomerative(data, n_clusters):
     try:
         data_pretraiter, data_scaled = pretraiter_donnees(data)
-        agg = AgglomerativeClustering(n_clusters=n_clusters, affinity='euclidean', linkage='ward')
+        st.write("Data to be clustered (Agglomerative):", data_scaled)
+        agg = AgglomerativeClustering(n_clusters=n_clusters, metric='euclidean', linkage='ward')
         agg_labels = agg.fit_predict(data_scaled)
         data_pretraiter['Cluster'] = agg_labels
         return data_pretraiter, agg_labels, data_scaled
     except Exception as e:
         logger.error(f"Erreur lors de l'application du Clustering Hiérarchique : {e}")
-        st.error("Erreur lors de l'application du Clustering Hiérarchique")
+        st.error(f"Erreur lors de l'application du Clustering Hiérarchique: {e}")
         return None, None, None
 
 # Charger le dataset
@@ -147,4 +149,4 @@ if fichier_telecharge is not None:
             st.pyplot(plt)
 
 # Ajouter le pied de page
-st.markdown('<div class="footer">Developed by [IDRISSI Mohamed,BENRIALA Mohamed,ELLAOUAH Zahira, BOUDALAA Khadija, ]</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer">Developed by [IDRISSI Mohamed, BENRIALA Mohamed, ELLAOUAH Zahira, KHADIJA Boudalaa]</div>', unsafe_allow_html=True)
