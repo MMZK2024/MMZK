@@ -147,4 +147,4 @@ if fichier_telecharge is not None:
             st.pyplot(plt)
 
 # Ajouter le pied de page
-st.markdown('<div class="footer">Developed by [Votre Nom]</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer">Developed by [IDRISSI Mohamed,BENRIALA Mohamed,ELLAOUAH Zahira, BOUDALAA Khadija, ]</div>', unsafe_allow_html=True)
